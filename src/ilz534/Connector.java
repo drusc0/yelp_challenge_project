@@ -41,6 +41,7 @@ public class Connector {
 	 * returns the full review collection
 	 */
 	public MongoCollection<Document> getReviewCollection() {
+		System.out.println("Retrieving Review Collection....");
 		return this.review;
 	}
 	
@@ -49,6 +50,7 @@ public class Connector {
 	 * returns the full business collection
 	 */
 	public MongoCollection<Document> getBusinessCollection() {
+		System.out.println("Retrieving Business Collection....");
 		return this.business;
 	}
 	
@@ -66,6 +68,7 @@ public class Connector {
 	 * returns the full tip collection
 	 */
 	public MongoCollection<Document> getTipCollection() {
+		System.out.println("Retrieving Tip Collection....");
 		return this.tip;
 	}
 	

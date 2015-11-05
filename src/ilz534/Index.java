@@ -26,7 +26,7 @@ import org.apache.lucene.store.FSDirectory;
 
 public class Index {
 
-	private static final String PATH = "/Volumes/SEAGATE1TB/index/index";
+	private static final String PATH = "/Volumes/SEAGATE1TB/Yelp/index";
 	final private Directory dir;
 	final private Analyzer analyzer;
 	final private IndexWriterConfig iwc;
@@ -81,9 +81,11 @@ public class Index {
 	 */
 	public void indexDocs() throws IOException {
 		List<org.bson.Document> businessList = getBusinessList();
+		System.out.println("Indexing documents in " + PATH);
 		
 		// iterate through the list of business
 		for (org.bson.Document businessDoc : businessList) {
+			System.out.println("Processing business ID -> " + businessDoc.getString("business_id"));
 			Document document = new Document();
 
 			String businessID = businessDoc.getString("business_id");
@@ -121,6 +123,7 @@ public class Index {
 		for(org.bson.Document document : list) {
 			// only if collection contains the key 'text'
 			if ( document.containsKey("text") ) {
+				System.out.println("\t\t" + document.getString("text"));
 				strBuilder.append( document.getString("text") );
 			}
 		}
