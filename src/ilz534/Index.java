@@ -2,10 +2,15 @@ package ilz534;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
@@ -20,14 +25,14 @@ import org.apache.lucene.store.FSDirectory;
  */
 
 public class Index {
-	
+
 	private static final String PATH = "/Volumes/SEAGATE1TB/index/index";
 	final private Directory dir;
 	final private Analyzer analyzer;
 	final private IndexWriterConfig iwc;
 	final private IndexWriter writer;
 	private Connector con;
-	
+
 	public Index() throws IOException {
 		this.dir = FSDirectory.open(Paths.get(PATH));
 		this.analyzer = new StandardAnalyzer();
@@ -35,28 +40,101 @@ public class Index {
 		this.writer = new IndexWriter(this.dir, this.iwc);
 		this.con = new Connector();
 	}
-	
-	/*
-	 * write
-	 * adds lucene document
-	 */
-	public void write(Document doc) throws IOException {
-		this.writer.addDocument(doc);
-	}
-	
-	/*
-	 * indexReviewDocs
-	 * itereates thru reviews
-	 */
-	public void indexReviewDocs() {
 
+	/*
+	 * getBusinessList
+	 * so we can extract all reviews and tips on the
+	 * business while iterating
+	 */
+	public List<org.bson.Document> getBusinessList() {
+		
+		List<org.bson.Document> businessList = this.con.getBusinessList();
+		return businessList;
+	}
+
+	/*
+	 * getReviewList
+	 * passes the business id to find the reviews for a specific
+	 * business
+	 */
+	public List<org.bson.Document> getReviewList(String businessID) {
+		List<org.bson.Document> reviewList = this.con.getReviewCollection()
+				.find(new org.bson.Document("business_id", businessID))
+				.into(new ArrayList<org.bson.Document>());
+		return reviewList;
 	}
 	
 	/*
-	 * indexTipDocs
-	 * iterates thru tips
+	 * getTipList
+	 * passes the business id to find the reviews for a specific
+	 * business
 	 */
-	public void indexTipDocs() {
+	public List<org.bson.Document> getTipList(String businessID) {
+		List<org.bson.Document> tipList = this.con.getTipCollection()
+				.find(new org.bson.Document("business_id", businessID))
+				.into(new ArrayList<org.bson.Document>());
+		return tipList;
+	}
+
+	/*
+	 * indexDocs
+	 */
+	public void indexDocs() throws IOException {
+		List<org.bson.Document> businessList = getBusinessList();
 		
+		// iterate through the list of business
+		for (org.bson.Document businessDoc : businessList) {
+			Document document = new Document();
+
+			String businessID = businessDoc.getString("business_id");
+			document.add( new StringField("DOCNO", businessID, Field.Store.YES) );
+			
+			// query review collection based on the businessID
+			List<org.bson.Document> reviewList = getReviewList(businessID);
+			// pass the list to extract only text information
+			String reviewText = getText(reviewList);
+			document.add( new TextField("REVIEW", reviewText, Field.Store.YES) );
+			
+			// query tip collection based on businessID
+			List<org.bson.Document> tipList = getTipList(businessID);
+			// pass the list to extract only text information
+			String tipText = getText(tipList);
+			document.add( new TextField("TIP", tipText, Field.Store.YES) );
+
+			//write to index
+			this.writer.addDocument(document);
+		}
+		
+		writerCleanup();
+	}
+	
+	/*
+	 * getText
+	 * concatenetas all text from the query list
+	 * @params List<org.bson.Document>
+	 * @return String of all text items
+	 */
+	public String getText(List<org.bson.Document> list) {
+		StringBuilder strBuilder = new StringBuilder();
+		
+		// iterate the list of documents extracting the text
+		for(org.bson.Document document : list) {
+			// only if collection contains the key 'text'
+			if ( document.containsKey("text") ) {
+				strBuilder.append( document.getString("text") );
+			}
+		}
+		
+		return strBuilder.toString();
+	}
+	
+	/*
+	 * writerCleanup
+	 * merges, commits and closes writer
+	 */
+	public void writerCleanup() throws IOException {
+		this.writer.forceMerge(1);
+		this.writer.commit();
+		this.writer.close();
 	}
 }

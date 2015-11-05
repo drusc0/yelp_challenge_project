@@ -30,4 +30,16 @@ public class ConnectorTest extends TestCase {
 		assertNotNull(tip);
 		assertEquals(tip, con.getTipCollection());
 	}
+	
+	public void testBusinessCollection() {
+		MongoCollection<Document> bus = con.getBusinessCollection();
+		assertNotNull(bus);
+		assertEquals(bus, con.getBusinessCollection());
+	}
+	
+	public void testBusinessList() {
+		long countCol = con.getBusinessCollection().count();
+		long countLst = con.getBusinessList().size();
+		assertEquals(countCol, countLst);
+	}
 }

@@ -1,5 +1,8 @@
 package ilz534;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.bson.Document;
 
 import com.mongodb.MongoClient;
@@ -23,12 +26,14 @@ public class Connector {
 	final private MongoDatabase db;
 	private MongoCollection<Document> review;
 	private MongoCollection<Document> tip;
+	private MongoCollection<Document> business;
 	
 	public Connector() {
 		this.client = new MongoClient(new MongoClientURI("mongodb://localhost"));
 		this.db = client.getDatabase("yelp");
 		this.review = this.db.getCollection("review");
 		this.tip = this.db.getCollection("tip");
+		this.business = this.db.getCollection("business");
 	}
 	
 	/*
@@ -37,6 +42,23 @@ public class Connector {
 	 */
 	public MongoCollection<Document> getReviewCollection() {
 		return this.review;
+	}
+	
+	/*
+	 * getBusinessCollection
+	 * returns the full business collection
+	 */
+	public MongoCollection<Document> getBusinessCollection() {
+		return this.business;
+	}
+	
+	/*
+	 * getBusinessList
+	 * returns the full review list collection as an array list
+	 */
+	public List<Document> getBusinessList() {
+		List<Document> businessList = this.business.find().into(new ArrayList<Document>());
+		return businessList;
 	}
 	
 	/*
