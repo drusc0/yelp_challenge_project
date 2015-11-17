@@ -19,13 +19,6 @@ public class IndexTest extends TestCase {
 		con = new Connector();
 	}
 
-	public void testBusinessRetrieval() {
-		List<org.bson.Document> businessConList = con.getBusinessList();
-		List<org.bson.Document> businessIndList = ind.getBusinessList();
-		
-		assertEquals(businessConList.size(), businessIndList.size());
-
-	}
 
 	public void testReviewWithBusinessID() {
 		org.bson.Document doc = con.getBusinessCollection().find().first();

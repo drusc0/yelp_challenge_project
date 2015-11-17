@@ -11,8 +11,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
 
-/*
- * Conncetor
+/**
+ * Connector
  * 
  * Provides access to the localhost mongodb collection
  * So far we are using only the collection review and tip
@@ -36,7 +36,7 @@ public class Connector {
 		this.business = this.db.getCollection("business");
 	}
 	
-	/*
+	/**
 	 * getReviewCollection
 	 * returns the full review collection
 	 */
@@ -45,7 +45,7 @@ public class Connector {
 		return this.review;
 	}
 	
-	/*
+	/**
 	 * getBusinessCollection
 	 * returns the full business collection
 	 */
@@ -54,7 +54,7 @@ public class Connector {
 		return this.business;
 	}
 	
-	/*
+	/**
 	 * getBusinessList
 	 * returns the full review list collection as an array list
 	 */
@@ -63,7 +63,35 @@ public class Connector {
 		return businessList;
 	}
 	
-	/*
+	/**
+	 * getBusinessTrainingSet
+	 * divides the list into 70% for training
+	 * @return training list
+	 */
+	public List<Document> getBusinessTrainingSet() {
+		long count = this.business.count();
+		int limit = (int) (.7 * count);
+		
+		List<Document> trainingList = this.business.find().limit(limit).into(new ArrayList<Document>());
+		
+		return trainingList;
+	}
+	
+	/**
+	 * getBusinessTestingSet
+	 * divides the list into 30% for testing (last 30%)
+	 * @return testing list
+	 */
+	public List<Document> getBusinessTestingSet() {
+		long count = this.business.count();
+		int skip = (int) (.7 * count);
+		
+		List<Document> testingList = this.business.find().skip(skip).into(new ArrayList<Document>());
+		
+		return testingList;
+	}
+	
+	/**
 	 * getTipCollection
 	 * returns the full tip collection
 	 */

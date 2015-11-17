@@ -41,21 +41,12 @@ public class Index {
 		this.con = new Connector();
 	}
 
-	/*
-	 * getBusinessList
-	 * so we can extract all reviews and tips on the
-	 * business while iterating
-	 */
-	public List<org.bson.Document> getBusinessList() {
-		
-		List<org.bson.Document> businessList = this.con.getBusinessList();
-		return businessList;
-	}
-
-	/*
+	/**
 	 * getReviewList
 	 * passes the business id to find the reviews for a specific
 	 * business
+	 * @param businessID
+	 * @return reviewList
 	 */
 	public List<org.bson.Document> getReviewList(String businessID) {
 		List<org.bson.Document> reviewList = this.con.getReviewCollection()
@@ -64,10 +55,12 @@ public class Index {
 		return reviewList;
 	}
 	
-	/*
+	/**
 	 * getTipList
 	 * passes the business id to find the reviews for a specific
 	 * business
+	 * @param businessID
+	 * @return tipList
 	 */
 	public List<org.bson.Document> getTipList(String businessID) {
 		List<org.bson.Document> tipList = this.con.getTipCollection()
@@ -76,11 +69,11 @@ public class Index {
 		return tipList;
 	}
 
-	/*
+	/**
 	 * indexDocs
 	 */
 	public void indexDocs() throws IOException {
-		List<org.bson.Document> businessList = getBusinessList();
+		List<org.bson.Document> businessList = this.con.getBusinessTrainingSet();
 		System.out.println("Indexing documents in " + PATH);
 		
 		// iterate through the list of business
@@ -110,7 +103,7 @@ public class Index {
 		writerCleanup();
 	}
 	
-	/*
+	/**
 	 * getText
 	 * concatenetas all text from the query list
 	 * @params List<org.bson.Document>
@@ -125,18 +118,18 @@ public class Index {
 			if ( document.containsKey("text") ) {
 				System.out.println("\t\t" + document.getString("text"));
 				strBuilder.append( document.getString("text") );
+				strBuilder.append( System.getProperty("line.separator") );
 			}
 		}
 		
 		return strBuilder.toString();
 	}
 	
-	/*
+	/**
 	 * writerCleanup
 	 * merges, commits and closes writer
 	 */
 	public void writerCleanup() throws IOException {
-		this.writer.forceMerge(1);
 		this.writer.commit();
 		this.writer.close();
 	}
