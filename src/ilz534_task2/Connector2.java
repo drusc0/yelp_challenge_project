@@ -1,4 +1,6 @@
-package ilz534;
+package ilz534_task2;
+
+import static java.util.Arrays.asList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,23 +13,24 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
 /**
- * Connector
+ * Connector2.java
  * 
- * Provides access to the localhost mongodb collection So far we are using only
- * the collection review and tip Depending on assignment 2, this might be
- * extended to use more
- * 
+ * provides an interface with mongodb
+ * This varies from the connector class in that we use this to
+ * accomplish task 2 of our assignment.
+ * Task2: we will use 70% of all the businesses with reviews that
+ * have useful votes of more than 0.
+ * @author drusc0
  */
 
-public class Connector {
-
+public class Connector2 {
 	final private MongoClient client;
 	final private MongoDatabase db;
 	private MongoCollection<Document> review;
 	private MongoCollection<Document> tip;
 	private MongoCollection<Document> business;
 
-	public Connector() {
+	public Connector2() {
 		this.client = new MongoClient(new MongoClientURI("mongodb://localhost"));
 		this.db = client.getDatabase("yelp");
 		this.review = this.db.getCollection("review");
@@ -63,36 +66,65 @@ public class Connector {
 		return businessList;
 	}
 
+
 	/**
-	 * getBusinessTrainingSet 
-	 * divides the list into 70% for training
+	 * getBusinessTrainingSet
+	 * divides the list into 70% for training This is
+	 * for task 2, and we need only businesses with reviews that have useful
+	 * votes.
 	 * @return training list
 	 */
 	public List<Document> getBusinessTrainingSet() {
-		long count = this.business.count();
-		int limit = (int) (.7 * count);
-
-		List<Document> trainingList = this.business.find().limit(limit)
+		
+		List<Document> pipeline;
+		pipeline = asList(	new Document("$group",
+										new Document("_id", "$business_id")
+										.append("useful_votes", 
+												new Document("$sum","$votes.useful"))),
+							new Document("$match",
+										new Document("useful_votes",
+												new Document("$gte", 1))));
+		
+		List<Document> trainingList = this.review.aggregate(pipeline)
 				.into(new ArrayList<Document>());
+		
+		long count = (long) (trainingList.size() * .7);
+		
+		for(long i = count+1; i < trainingList.size(); i++) {
+			trainingList.remove(count);
+		}
 
 		return trainingList;
 	}
 
 	/**
-	 * getBusinessTestingSet 
+	 * getBusinessTestingSet
 	 * divides the list into 30% for testing (last 30%)
+	 * The remaining businesses with useful votes will be used for testing
 	 * @return testing list
 	 */
 	public List<Document> getBusinessTestingSet() {
-		long count = this.business.count();
-		int skip = (int) (.7 * count);
 
-		List<Document> testingList = this.business.find().skip(skip)
+		List<Document> pipeline;
+		pipeline = asList(	new Document("$group",
+										new Document("_id", "$business_id")
+										.append("useful_votes", 
+												new Document("$sum","$votes.useful"))),
+							new Document("$match",
+										new Document("useful_votes",
+												new Document("$gte", 1))));
+
+		List<Document> testingList = this.review.aggregate(pipeline)
 				.into(new ArrayList<Document>());
+		
+		long count = (long) (testingList.size() * .7);
+		
+		for(long i = 0; i <= count; i++) {
+			testingList.remove(count);
+		}
 
 		return testingList;
 	}
-
 
 	/**
 	 * getTipCollection 
@@ -102,5 +134,4 @@ public class Connector {
 		System.out.println("Retrieving Tip Collection....");
 		return this.tip;
 	}
-
 }

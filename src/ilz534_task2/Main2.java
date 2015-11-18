@@ -1,14 +1,13 @@
-package ilz534;
+package ilz534_task2;
+
 
 import java.io.IOException;
 
-public class Main {
-
+public class Main2 {
 	public static void main(String[] args) throws IOException {
 
-		Index ind = new Index();
+		Index2 ind = new Index2();
 		//index for task 1
 		ind.indexDocs();
 	}
-
 }

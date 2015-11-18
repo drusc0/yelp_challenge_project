@@ -1,4 +1,6 @@
-package ilz534;
+package ilz534_task2;
+
+import ilz534.Connector;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -16,24 +18,15 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
-/**
- * Index
- * 
- * provides the initial set up to build the index
- * we will use this in combination with mongo to iterate through
- * the entries and index the necessary information.
- */
-
-public class Index {
-
-	private static final String PATH = "/Volumes/SEAGATE1TB/Yelp/index";
+public class Index2 {
+	private static final String PATH = "/Volumes/SEAGATE1TB/Yelp/index2";
 	final private Directory dir;
 	final private Analyzer analyzer;
 	final private IndexWriterConfig iwc;
 	final private IndexWriter writer;
 	private Connector con;
 
-	public Index() throws IOException {
+	public Index2() throws IOException {
 		this.dir = FSDirectory.open(Paths.get(PATH));
 		this.analyzer = new StandardAnalyzer();
 		this.iwc = new IndexWriterConfig(this.analyzer);
@@ -41,41 +34,28 @@ public class Index {
 		this.con = new Connector();
 	}
 
+
 	/**
-	 * getReviewList 
+	 * getReviewListUsefulVotes
 	 * passes the business id to find the reviews for a specific
 	 * business
 	 * @param businessID
 	 * @return reviewList
 	 */
-	public List<org.bson.Document> getReviewList(String businessID) {
+	public List<org.bson.Document> getReviewListUsefulVotes(String businessID) {
 		List<org.bson.Document> reviewList = this.con.getReviewCollection()
-				.find(new org.bson.Document("business_id", businessID))
+				.find(new org.bson.Document("business_id", businessID)
+				.append("votes.useful", new org.bson.Document("$gte", 1)))
 				.into(new ArrayList<org.bson.Document>());
 		return reviewList;
 	}
 
 
 	/**
-	 * getTipList 
-	 * passes the business id to find the reviews for a specific
-	 * business
-	 * @param businessID
-	 * @return tipList
-	 */
-	public List<org.bson.Document> getTipList(String businessID) {
-		List<org.bson.Document> tipList = this.con.getTipCollection()
-				.find(new org.bson.Document("business_id", businessID))
-				.into(new ArrayList<org.bson.Document>());
-		return tipList;
-	}
-
-	/**
 	 * indexDocs 
-	 * takes the 70% of businesses from the database to index. each
-	 * business is a document and each review and tip related to the document
-	 * id. This index is related to task 1 of our final project, where we try to
-	 * label business using review and tip.
+	 * takes the 70% of businesses from the database to index. 
+	 * we first select the reviews related to the business ids with
+	 * at least 1 useful vote.
 	 */
 	public void indexDocs() throws IOException {
 		List<org.bson.Document> businessList = this.con
@@ -85,23 +65,17 @@ public class Index {
 		// iterate through the list of business
 		for (org.bson.Document businessDoc : businessList) {
 			System.out.println("Processing business ID -> "
-					+ businessDoc.getString("business_id"));
+					+ businessDoc.getString("_id"));
 			Document document = new Document();
 
-			String businessID = businessDoc.getString("business_id");
+			String businessID = businessDoc.getString("_id");
 			document.add(new StringField("DOCNO", businessID, Field.Store.YES));
 
 			// query review collection based on the businessID
-			List<org.bson.Document> reviewList = getReviewList(businessID);
+			List<org.bson.Document> reviewList = getReviewListUsefulVotes(businessID);
 			// pass the list to extract only text information
 			String reviewText = getText(reviewList);
 			document.add(new TextField("REVIEW", reviewText, Field.Store.YES));
-
-			// query tip collection based on businessID
-			List<org.bson.Document> tipList = getTipList(businessID);
-			// pass the list to extract only text information
-			String tipText = getText(tipList);
-			document.add(new TextField("TIP", tipText, Field.Store.YES));
 
 			// write to index
 			this.writer.addDocument(document);
@@ -109,7 +83,7 @@ public class Index {
 
 		writerCleanup();
 	}
-	
+
 
 	/**
 	 * getText 
