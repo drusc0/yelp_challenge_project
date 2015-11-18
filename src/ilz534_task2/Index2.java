@@ -1,7 +1,5 @@
 package ilz534_task2;
 
-import ilz534.Connector;
-
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -24,14 +22,14 @@ public class Index2 {
 	final private Analyzer analyzer;
 	final private IndexWriterConfig iwc;
 	final private IndexWriter writer;
-	private Connector con;
+	private Connector2 con;
 
 	public Index2() throws IOException {
 		this.dir = FSDirectory.open(Paths.get(PATH));
 		this.analyzer = new StandardAnalyzer();
 		this.iwc = new IndexWriterConfig(this.analyzer);
 		this.writer = new IndexWriter(this.dir, this.iwc);
-		this.con = new Connector();
+		this.con = new Connector2();
 	}
 
 
@@ -58,8 +56,8 @@ public class Index2 {
 	 * at least 1 useful vote.
 	 */
 	public void indexDocs() throws IOException {
-		List<org.bson.Document> businessList = this.con
-				.getBusinessTrainingSet();
+		List<org.bson.Document> businessList = this.con.getBusinessTrainingSet();
+		
 		System.out.println("Indexing documents in " + PATH);
 
 		// iterate through the list of business

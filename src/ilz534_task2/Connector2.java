@@ -46,6 +46,15 @@ public class Connector2 {
 		System.out.println("Retrieving Review Collection....");
 		return this.review;
 	}
+	
+	/**
+	 * getTipCollection 
+	 * @returns the full tip collection
+	 */
+	public MongoCollection<Document> getTipCollection() {
+		System.out.println("Retrieving Tip Collection....");
+		return this.tip;
+	}
 
 	/**
 	 * getBusinessCollection 
@@ -61,8 +70,8 @@ public class Connector2 {
 	 * @returns the full review list collection as an array list
 	 */
 	public List<Document> getBusinessList() {
-		List<Document> businessList = this.business.find().into(
-				new ArrayList<Document>());
+		List<Document> businessList = this.business.find()
+				.into(new ArrayList<Document>());
 		return businessList;
 	}
 
@@ -87,12 +96,6 @@ public class Connector2 {
 		
 		List<Document> trainingList = this.review.aggregate(pipeline)
 				.into(new ArrayList<Document>());
-		
-		long count = (long) (trainingList.size() * .7);
-		
-		for(long i = count+1; i < trainingList.size(); i++) {
-			trainingList.remove(count);
-		}
 
 		return trainingList;
 	}
@@ -126,12 +129,4 @@ public class Connector2 {
 		return testingList;
 	}
 
-	/**
-	 * getTipCollection 
-	 * @returns the full tip collection
-	 */
-	public MongoCollection<Document> getTipCollection() {
-		System.out.println("Retrieving Tip Collection....");
-		return this.tip;
-	}
 }
