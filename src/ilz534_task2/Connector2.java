@@ -96,6 +96,12 @@ public class Connector2 {
 		
 		List<Document> trainingList = this.review.aggregate(pipeline)
 				.into(new ArrayList<Document>());
+		
+		long count = (long) (trainingList.size() * .7);
+		
+		for(long i = count+1; i < trainingList.size(); i++) {
+			trainingList.remove(count);
+		}
 
 		return trainingList;
 	}
