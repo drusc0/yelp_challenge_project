@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -43,7 +44,7 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class Search {
 
-	private static final String PATH = "/Volumes/SEAGATE1TB/Yelp/index";
+	private static final String PATH = "/Volumes/SEAGATE1TB 1/Yelp/index";
 	private Connector con;
 	private IndexReader reader;
 	private IndexSearcher searcher;
@@ -111,11 +112,12 @@ public class Search {
 			List<org.bson.Document> list = new ArrayList<org.bson.Document>();
 
 			// get review list based on doc ids
-			if(field.equals("REVIEW")) {
-				//List<org.bson.Document> reviewList = this.getReviewList(docID);
+			if (field.equals("REVIEW")) {
+				// List<org.bson.Document> reviewList =
+				// this.getReviewList(docID);
 				list = this.getReviewList(docID);
-			} else if(field.equals("TIP")) {
-				//List<org.bson.Document> tipList = this.getReviewList(docID);
+			} else if (field.equals("TIP")) {
+				// List<org.bson.Document> tipList = this.getReviewList(docID);
 				list = this.getTipList(docID);
 			}
 			String txt = this.getText(list);
@@ -225,7 +227,8 @@ public class Search {
 	 * @return string - string with no stopwords
 	 * @throws Exception
 	 */
-	public static String removeStopWords(String textFile) throws Exception {
+	public String removeStopWords(String textFile) throws Exception {
+		int[] randomSet = generate4Random(textFile);
 		Analyzer analyzer = new StandardAnalyzer();
 		TokenStream ts = analyzer.tokenStream("content", textFile);
 		StringBuilder builder = new StringBuilder();
@@ -234,8 +237,11 @@ public class Search {
 		try {
 			ts.reset(); // Resets this stream to the beginning. (Required)
 			int counter = 0;
-			while (ts.incrementToken() || counter < 1024) {
-				builder.append(charTerm.toString() + " ");
+			while (ts.incrementToken()) {
+				if (counter == randomSet[0] || counter == randomSet[1]
+						|| counter == randomSet[2] || counter == randomSet[3]) {
+					builder.append(charTerm.toString() + " ");
+				}
 				counter++;
 			}
 			ts.end(); // Perform end-of-stream operations, e.g. set the final
@@ -244,6 +250,28 @@ public class Search {
 			ts.close(); // Release resources associated with this stream.
 		}
 		return builder.toString();
+	}
+
+	/**
+	 * generate4random generate 4 unique random integers
+	 * 
+	 * @param text
+	 * @return array of 4 ints
+	 */
+	public int[] generate4Random(String text) {
+		int size = text.toCharArray().length;
+		Random random = new Random();
+		int[] ints = new int[4];
+
+		for (int i = 0; i < 4; i++) {
+			ints[i] = random.nextInt(size);
+			for (int j = i; j > 0; j--) {
+				if (ints[i] == ints[j]) {
+					ints[i] = random.nextInt(size);
+				}
+			}
+		}
+		return ints;
 	}
 
 	/**
@@ -259,8 +287,7 @@ public class Search {
 				.into(new ArrayList<org.bson.Document>());
 		return reviewList;
 	}
-	
-	
+
 	/**
 	 * getTipList passes the business id to find the reviews for a specific
 	 * business
@@ -305,4 +332,23 @@ public class Search {
 		this.unprocessedRevs = unprocessedRevs;
 	}
 
+	public static void main(String[] args) throws IOException, ParseException {
+		Analyzer analyzer = new StandardAnalyzer();
+		QueryParser parser = new QueryParser("REVIEW", analyzer);
+		IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths
+				.get(PATH)));
+		IndexSearcher searcher = new IndexSearcher(reader);
+
+		Query query = parser.parse(QueryParser
+				.escape("I am looking for a good place to relax"));
+		// get top 1000 results
+
+		TopDocs results = searcher.search(query, 10);
+		ScoreDoc[] hits = results.scoreDocs;
+		for (int i = 0; i < hits.length; i++) {
+
+			Document document = searcher.doc(hits[i].doc);
+			System.out.println(document.get("DOCNO") + ": " + hits[i].score);
+		}
+	}
 }
