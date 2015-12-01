@@ -98,19 +98,27 @@ public class Search {
 		return terms;
 	}
 
-	public void rankDoccuments(int numberOfHits, String path)
+	public void rankDoccuments(String field, int numberOfHits, String path)
 			throws IOException, ParseException {
 
-		QueryParser parser = new QueryParser("REVIEW", this.analyzer);
+		QueryParser parser = new QueryParser(field, this.analyzer);
 
 		List<org.bson.Document> testingSet = this.getTestingSet();
 		// extract the remaining dataset (testing)
 		for (org.bson.Document doc : testingSet) {
 
 			String docID = doc.getString("business_id");
+			List<org.bson.Document> list = new ArrayList<org.bson.Document>();
+
 			// get review list based on doc ids
-			List<org.bson.Document> reviewList = this.getReviewList(docID);
-			String txt = this.getText(reviewList);
+			if(field.equals("REVIEW")) {
+				//List<org.bson.Document> reviewList = this.getReviewList(docID);
+				list = this.getReviewList(docID);
+			} else if(field.equals("TIP")) {
+				//List<org.bson.Document> tipList = this.getReviewList(docID);
+				list = this.getTipList(docID);
+			}
+			String txt = this.getText(list);
 
 			// parse queries
 			try {
@@ -251,6 +259,21 @@ public class Search {
 				.into(new ArrayList<org.bson.Document>());
 		return reviewList;
 	}
+	
+	
+	/**
+	 * getTipList passes the business id to find the reviews for a specific
+	 * business
+	 * 
+	 * @param businessID
+	 * @return reviewList
+	 */
+	public List<org.bson.Document> getTipList(String businessID) {
+		List<org.bson.Document> tipList = this.con.getTipCollection()
+				.find(new org.bson.Document("business_id", businessID))
+				.into(new ArrayList<org.bson.Document>());
+		return tipList;
+	}
 
 	/**
 	 * getText concatenates all text from the query list
@@ -272,6 +295,14 @@ public class Search {
 		}
 
 		return strBuilder.toString();
+	}
+
+	public List<String> getUnprocessedRevs() {
+		return unprocessedRevs;
+	}
+
+	public void setUnprocessedRevs(List<String> unprocessedRevs) {
+		this.unprocessedRevs = unprocessedRevs;
 	}
 
 }
