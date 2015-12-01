@@ -11,6 +11,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
@@ -18,6 +19,8 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
 
@@ -98,28 +101,31 @@ public class Search {
 			List<org.bson.Document> reviewList = this.getReviewList(docID);
 			String txt = this.getText(reviewList);
 
-			try {
-				Query query = parser.parse(removeStopWords(txt));
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			// parse queries
-			// Query query = parser.parse(QueryParser.escape(txt));
-
-			// get top 1000 results
 			/*
-			 * TopDocs results = this.searcher.search(query, 1000); ScoreDoc[]
-			 * hits = results.scoreDocs; for(int i = 0; i < hits.length; i++) {
-			 * Document document = this.searcher.doc(hits[i].doc);
-			 * System.out.println(document.get("DOCNO")); }
+			 * try { Query query =
+			 * parser.parse(QueryParser.escape(removeStopWords(txt))); } catch
+			 * (Exception e) { e.printStackTrace(); }
 			 */
+			// parse queries
+			try {
+				Query query = parser.parse(QueryParser.escape(txt));
+				// get top 1000 results
+
+				TopDocs results = this.searcher.search(query, 1000);
+				ScoreDoc[] hits = results.scoreDocs;
+				for (int i = 0; i < hits.length; i++) {
+					Document document = this.searcher.doc(hits[i].doc);
+					System.out.println(document.get("DOCNO"));
+				}
+			} catch (Exception e) {
+				//DO NOTHING, SKIP
+			}
+
 		}
 	}
 
-	
 	/**
-	 * removeStopWords
-	 * delete stop words from query string
+	 * removeStopWords delete stop words from query string
 	 * 
 	 * @param textFile
 	 * @return
@@ -133,9 +139,10 @@ public class Search {
 
 		try {
 			ts.reset(); // Resets this stream to the beginning. (Required)
-			while (ts.incrementToken()) {
+			int counter = 0;
+			while (ts.incrementToken() || counter < 1024) {
 				builder.append(charTerm.toString() + " ");
-
+				counter++;
 			}
 			ts.end(); // Perform end-of-stream operations, e.g. set the final
 						// offset.
