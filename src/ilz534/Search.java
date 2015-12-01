@@ -1,5 +1,7 @@
 package ilz534;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -96,8 +98,8 @@ public class Search {
 		return terms;
 	}
 
-	public void rankDoccuments(int numberOfHits, String path) throws IOException,
-			ParseException {
+	public void rankDoccuments(int numberOfHits, String path)
+			throws IOException, ParseException {
 
 		QueryParser parser = new QueryParser("REVIEW", this.analyzer);
 
@@ -118,7 +120,11 @@ public class Search {
 				TopDocs results = this.searcher.search(query, numberOfHits);
 				ScoreDoc[] hits = results.scoreDocs;
 				List<Entry<String, Double>> hitsProcessed = processHits(hits);
-				writeToFile(docID, hitsProcessed, path);
+				try {
+					writeToFile(docID, hitsProcessed, path);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			} catch (Exception e) {
 				this.unprocessedRevs.add(docID);
 				// DO NOTHING, SKIP
@@ -126,9 +132,26 @@ public class Search {
 
 		}
 	}
-	
-	public void writeToFile(String docID, List<Entry<String, Double>> entries, String path) {
-		
+
+	/**
+	 * writeToFile writes entries to a file for analysis
+	 * 
+	 * @param docID
+	 * @param entries
+	 * @param path
+	 * @throws IOException
+	 */
+	public void writeToFile(String docID, List<Entry<String, Double>> entries,
+			String path) throws IOException {
+		BufferedWriter bw = new BufferedWriter(new FileWriter(path, true));
+		bw.write("<ID>" + docID + "</ID>\n");
+		bw.write("<Categories>\n");
+		for (Entry<String, Double> entry : entries) {
+			System.out.println(entry.toString());
+			bw.write(entry.toString() + "\n");
+		}
+		bw.write("</Categories>\n");
+		bw.close();
 	}
 
 	/**
@@ -161,7 +184,7 @@ public class Search {
 				}
 			}
 		}
-		
+
 		return (lst = sort(labelScore));
 	}
 
