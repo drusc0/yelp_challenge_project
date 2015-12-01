@@ -3,8 +3,13 @@ package ilz534;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -41,10 +46,11 @@ public class Search {
 	private IndexReader reader;
 	private IndexSearcher searcher;
 	private Analyzer analyzer;
+	private List<String> unprocessedRevs;
 
 	/**
-	 * establishes connection with mongo and initialized reader, searcher, and
-	 * analyer
+	 * establishes connection with mongodb and initialized reader, searcher, and
+	 * analyzer
 	 * 
 	 * @throws IOException
 	 */
@@ -55,6 +61,8 @@ public class Search {
 		this.analyzer = new StandardAnalyzer();
 		// set searcher to best match similarity model
 		this.searcher.setSimilarity(new BM25Similarity());
+
+		this.unprocessedRevs = new ArrayList<String>();
 	}
 
 	/**
@@ -88,7 +96,8 @@ public class Search {
 		return terms;
 	}
 
-	public void rankDoccuments() throws IOException, ParseException {
+	public void rankDoccuments(int numberOfHits, String path) throws IOException,
+			ParseException {
 
 		QueryParser parser = new QueryParser("REVIEW", this.analyzer);
 
@@ -101,34 +110,88 @@ public class Search {
 			List<org.bson.Document> reviewList = this.getReviewList(docID);
 			String txt = this.getText(reviewList);
 
-			/*
-			 * try { Query query =
-			 * parser.parse(QueryParser.escape(removeStopWords(txt))); } catch
-			 * (Exception e) { e.printStackTrace(); }
-			 */
 			// parse queries
 			try {
 				Query query = parser.parse(QueryParser.escape(txt));
 				// get top 1000 results
 
-				TopDocs results = this.searcher.search(query, 1000);
+				TopDocs results = this.searcher.search(query, numberOfHits);
 				ScoreDoc[] hits = results.scoreDocs;
-				for (int i = 0; i < hits.length; i++) {
-					Document document = this.searcher.doc(hits[i].doc);
-					System.out.println(document.get("DOCNO"));
-				}
+				List<Entry<String, Double>> hitsProcessed = processHits(hits);
+				writeToFile(docID, hitsProcessed, path);
 			} catch (Exception e) {
-				//DO NOTHING, SKIP
+				this.unprocessedRevs.add(docID);
+				// DO NOTHING, SKIP
 			}
 
 		}
+	}
+	
+	public void writeToFile(String docID, List<Entry<String, Double>> entries, String path) {
+		
+	}
+
+	/**
+	 * processHits produces a list of unique categories that are candidates to
+	 * be category for the document being processed
+	 * 
+	 * @param hits
+	 * @return listProcessedHits
+	 * @throws IOException
+	 */
+	public List<Entry<String, Double>> processHits(ScoreDoc[] hits)
+			throws IOException {
+		HashMap<String, Double> labelScore = new HashMap<String, Double>();
+		List<Entry<String, Double>> lst;
+
+		for (int i = 0; i < hits.length; i++) {
+
+			Document document = this.searcher.doc(hits[i].doc);
+
+			for (String category : this.con.getCategory(document.get("DOCNO"))) {
+				// if it exists get an average
+				if (labelScore.containsKey(category)) {
+					double val = labelScore.get(category);
+					val += hits[i].score;
+					val = val / 2;
+					labelScore.replace(category, val);
+					// if it is a new element add to list with score of document
+				} else {
+					labelScore.put(category, (double) hits[i].score);
+				}
+			}
+		}
+		
+		return (lst = sort(labelScore));
+	}
+
+	/**
+	 * sort sorts the items in the hash map in decreasing order
+	 * 
+	 * @param map
+	 * @return sortedEntries
+	 */
+	private List<Entry<String, Double>> sort(Map<String, Double> map) {
+		List<Entry<String, Double>> sortedEntries = new ArrayList<Entry<String, Double>>(
+				map.entrySet());
+
+		Collections.sort(sortedEntries,
+				new Comparator<Entry<String, Double>>() {
+
+					public int compare(Entry<String, Double> o1,
+							Entry<String, Double> o2) {
+						return o2.getValue().compareTo(o1.getValue());
+					}
+
+				});
+		return sortedEntries;
 	}
 
 	/**
 	 * removeStopWords delete stop words from query string
 	 * 
 	 * @param textFile
-	 * @return
+	 * @return string - string with no stopwords
 	 * @throws Exception
 	 */
 	public static String removeStopWords(String textFile) throws Exception {

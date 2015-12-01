@@ -92,6 +92,14 @@ public class Connector {
 
 		return testingList;
 	}
+	
+	
+	public ArrayList<String> getCategory(String businessID) {
+		Document filter = new Document("business_id", businessID);
+		Document categories = this.business.find(filter).first();
+		return (ArrayList<String>) categories.get("categories");
+		//return categories;
+	}
 
 
 	/**
@@ -103,4 +111,11 @@ public class Connector {
 		return this.tip;
 	}
 
+	public static void main(String[] args) {
+		Connector con = new Connector();
+		ArrayList<String> cat = con.getCategory("VZLTYr_v1vLSFKBw1aqhaA");
+		for(int i = 0; i < cat.size(); i++) {
+		System.out.println(cat.get(i));
+		}
+	}
 }
