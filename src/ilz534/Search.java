@@ -99,7 +99,7 @@ public class Search {
 		return terms;
 	}
 
-	public void rankDoccuments(String field, int numberOfHits, String path)
+	public void rankDocuments(String field, int numberOfHits, String path)
 			throws IOException, ParseException {
 
 		QueryParser parser = new QueryParser(field, this.analyzer);
@@ -113,20 +113,17 @@ public class Search {
 
 			// get review list based on doc ids
 			if (field.equals("REVIEW")) {
-				// List<org.bson.Document> reviewList =
-				// this.getReviewList(docID);
 				list = this.getReviewList(docID);
 			} else if (field.equals("TIP")) {
-				// List<org.bson.Document> tipList = this.getReviewList(docID);
 				list = this.getTipList(docID);
 			}
 			String txt = this.getText(list);
 
 			// parse queries
 			try {
-				Query query = parser.parse(QueryParser.escape(txt));
-				// get top 1000 results
-
+				Query query = parser.parse(QueryParser
+						.escape(txt));
+				// get top 1000 result
 				TopDocs results = this.searcher.search(query, numberOfHits);
 				ScoreDoc[] hits = results.scoreDocs;
 				List<Entry<String, Double>> hitsProcessed = processHits(hits);
@@ -138,6 +135,57 @@ public class Search {
 			} catch (Exception e) {
 				this.unprocessedRevs.add(docID);
 				// DO NOTHING, SKIP
+			}
+
+		}
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	public void rankDocumentsShortQuery(String field, int numberOfHits, String path)
+			throws IOException, ParseException {
+
+		QueryParser parser = new QueryParser(field, this.analyzer);
+
+		List<org.bson.Document> testingSet = this.getTestingSet();
+		// extract the remaining dataset (testing)
+		for (org.bson.Document doc : testingSet) {
+
+			String docID = doc.getString("business_id");
+			List<org.bson.Document> list = new ArrayList<org.bson.Document>();
+
+			// get review list based on doc ids
+			if (field.equals("REVIEW")) {
+				list = this.getReviewList(docID);
+			} else if (field.equals("TIP")) {
+				list = this.getTipList(docID);
+			}
+			
+			String txt = this.getText(list);
+
+			// parse queries
+			try {
+
+				Query query = parser.parse(removeStopWords(QueryParser
+						.escape(txt)));
+				// get top 1000 result
+				TopDocs results = this.searcher.search(query, numberOfHits);
+				ScoreDoc[] hits = results.scoreDocs;
+				List<Entry<String, Double>> hitsProcessed = processHits(hits);
+				try {
+					writeToFile(docID, hitsProcessed, path);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			} catch (Exception e) {
+				this.unprocessedRevs.add(docID);
 			}
 
 		}
@@ -241,6 +289,7 @@ public class Search {
 				if (counter == randomSet[0] || counter == randomSet[1]
 						|| counter == randomSet[2] || counter == randomSet[3]) {
 					builder.append(charTerm.toString() + " ");
+					System.out.println(charTerm.toString());
 				}
 				counter++;
 			}
