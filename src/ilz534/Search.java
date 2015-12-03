@@ -44,7 +44,7 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class Search {
 
-	private static final String PATH = "/Volumes/SEAGATE1TB 1/Yelp/index";
+	private static final String PATH = "/Volumes/SEAGATE1TB/Yelp/index";
 	private Connector con;
 	private IndexReader reader;
 	private IndexSearcher searcher;

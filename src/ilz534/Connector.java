@@ -36,7 +36,8 @@ public class Connector {
 	}
 
 	/**
-	 * getReviewCollection 
+	 * getReviewCollection
+	 * 
 	 * @returns the full review collection
 	 */
 	public MongoCollection<Document> getReviewCollection() {
@@ -45,7 +46,8 @@ public class Connector {
 	}
 
 	/**
-	 * getBusinessCollection 
+	 * getBusinessCollection
+	 * 
 	 * @returns the full business collection
 	 */
 	public MongoCollection<Document> getBusinessCollection() {
@@ -54,7 +56,8 @@ public class Connector {
 	}
 
 	/**
-	 * getBusinessList 
+	 * getBusinessList
+	 * 
 	 * @returns the full review list collection as an array list
 	 */
 	public List<Document> getBusinessList() {
@@ -64,8 +67,8 @@ public class Connector {
 	}
 
 	/**
-	 * getBusinessTrainingSet 
-	 * divides the list into 70% for training
+	 * getBusinessTrainingSet divides the list into 70% for training
+	 * 
 	 * @return training list
 	 */
 	public List<Document> getBusinessTrainingSet() {
@@ -79,8 +82,8 @@ public class Connector {
 	}
 
 	/**
-	 * getBusinessTestingSet 
-	 * divides the list into 30% for testing (last 30%)
+	 * getBusinessTestingSet divides the list into 30% for testing (last 30%)
+	 * 
 	 * @return testing list
 	 */
 	public List<Document> getBusinessTestingSet() {
@@ -92,18 +95,34 @@ public class Connector {
 
 		return testingList;
 	}
-	
-	
+
+	public boolean exists(String field, String key) {
+		boolean flag = false;
+		Document doc = new Document("business_id", key)
+				.append(field, new Document("$exists", true));
+		if (this.business.count(doc) > 0) {
+			flag = true;
+		}
+		return flag;
+	}
+
 	public ArrayList<String> getCategory(String businessID) {
 		Document filter = new Document("business_id", businessID);
 		Document categories = this.business.find(filter).first();
-		return (ArrayList<String>) categories.get("categories");
-		//return categories;
+
+		if(exists("categories", businessID)) {
+			@SuppressWarnings("unchecked")
+			List<String> list = (ArrayList<String>) categories.get("categories");
+			return (ArrayList<String>) list;
+		}
+
+		return new ArrayList<String>();
+		// return categories;
 	}
 
-
 	/**
-	 * getTipCollection 
+	 * getTipCollection
+	 * 
 	 * @returns the full tip collection
 	 */
 	public MongoCollection<Document> getTipCollection() {
@@ -114,8 +133,8 @@ public class Connector {
 	public static void main(String[] args) {
 		Connector con = new Connector();
 		ArrayList<String> cat = con.getCategory("VZLTYr_v1vLSFKBw1aqhaA");
-		for(int i = 0; i < cat.size(); i++) {
-		System.out.println(cat.get(i));
+		for (int i = 0; i < cat.size(); i++) {
+			System.out.println(cat.get(i));
 		}
 	}
 }
