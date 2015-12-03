@@ -153,7 +153,7 @@ public class Analyze {
 
 	public static void main(String[] args) throws IOException {
 		Connector con = new Connector();
-		String top10ReviewHits = "/top10reviewhits.txt";
+		String top10ReviewHits = "/top10reviewhitsnew.txt";
 		String path = System.getProperty("user.home");
 		FileInputStream is = new FileInputStream(path + top10ReviewHits);
 		InputStreamReader isr = new InputStreamReader(is);

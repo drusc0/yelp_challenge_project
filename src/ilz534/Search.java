@@ -287,7 +287,9 @@ public class Search {
 			int counter = 0;
 			while (ts.incrementToken()) {
 				if (counter == randomSet[0] || counter == randomSet[1]
-						|| counter == randomSet[2] || counter == randomSet[3]) {
+						|| counter == randomSet[2] || counter == randomSet[3] ||
+						counter == randomSet[4] || counter == randomSet[5] ||
+						counter == randomSet[6]) {
 					builder.append(charTerm.toString() + " ");
 					System.out.println(charTerm.toString());
 				}
@@ -310,9 +312,9 @@ public class Search {
 	public int[] generate4Random(String text) {
 		int size = text.toCharArray().length;
 		Random random = new Random();
-		int[] ints = new int[4];
+		int[] ints = new int[7];
 
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < 7; i++) {
 			ints[i] = random.nextInt(size);
 			for (int j = i; j > 0; j--) {
 				if (ints[i] == ints[j]) {
