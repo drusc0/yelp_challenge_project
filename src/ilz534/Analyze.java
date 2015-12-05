@@ -32,6 +32,8 @@ public class Analyze {
 	}
 	
 	public void setReader(String path) throws IOException {
+		this.trueNegative = 0;
+		this.truePositive = 0;
 		try {
 			this.br = new BufferedReader(new FileReader(path));
 		} catch (Exception e) {
@@ -44,7 +46,6 @@ public class Analyze {
 		return categoriesList;
 	}
 
-	@SuppressWarnings("null")
 	public void analyze() throws Exception {
 		String line = "";
 		Map<String, List<String>> map = new HashMap<String, List<String>>();

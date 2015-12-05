@@ -1,8 +1,12 @@
 package ilz534;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,8 +21,11 @@ import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.core.StopAnalyzer;
+import org.apache.lucene.analysis.core.StopFilter;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -31,6 +38,9 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
+
+import NounAttribute.NounAnalyzer;
+import NounAttribute.PartOfSpeechAttribute;
 
 /**
  * Search.java
@@ -50,6 +60,8 @@ public class Search {
 	private IndexSearcher searcher;
 	private Analyzer analyzer;
 	private List<String> unprocessedRevs;
+	private CharArraySet stopWords;
+	private Analyzer stopAnalyzer;
 
 	/**
 	 * establishes connection with mongodb and initialized reader, searcher, and
@@ -66,6 +78,7 @@ public class Search {
 		this.searcher.setSimilarity(new BM25Similarity());
 
 		this.unprocessedRevs = new ArrayList<String>();
+		initStopWords();
 	}
 
 	/**
@@ -99,7 +112,7 @@ public class Search {
 		return terms;
 	}
 
-	public void rankDocuments(String field, int numberOfHits, String path)
+	public void rankDocuments(String field, int numberOfHits, String path, int n)
 			throws IOException, ParseException {
 
 		QueryParser parser = new QueryParser(field, this.analyzer);
@@ -134,7 +147,7 @@ public class Search {
 				}
 			} catch (Exception e) {
 				this.unprocessedRevs.add(docID);
-				// DO NOTHING, SKIP
+				rankDocumentsShortQuery(field, numberOfHits, path, n);
 			}
 
 		}
@@ -149,7 +162,7 @@ public class Search {
 	
 	
 	
-	public void rankDocumentsShortQuery(String field, int numberOfHits, String path)
+	public void rankDocumentsShortQuery(String field, int numberOfHits, String path, int n)
 			throws IOException, ParseException {
 
 		QueryParser parser = new QueryParser(field, this.analyzer);
@@ -172,9 +185,10 @@ public class Search {
 
 			// parse queries
 			try {
-
-				Query query = parser.parse(removeStopWords(QueryParser
-						.escape(txt)));
+				List<String> vector = removeStopWords(txt);
+				String str = selectRandomWords(vector, n);
+				System.out.println(str);
+				Query query = parser.parse(str);
 				// get top 1000 result
 				TopDocs results = this.searcher.search(query, numberOfHits);
 				ScoreDoc[] hits = results.scoreDocs;
@@ -189,27 +203,6 @@ public class Search {
 			}
 
 		}
-	}
-
-	/**
-	 * writeToFile writes entries to a file for analysis
-	 * 
-	 * @param docID
-	 * @param entries
-	 * @param path
-	 * @throws IOException
-	 */
-	public void writeToFile(String docID, List<Entry<String, Double>> entries,
-			String path) throws IOException {
-		BufferedWriter bw = new BufferedWriter(new FileWriter(path, true));
-		bw.write("<ID>" + docID + "</ID>\n");
-		bw.write("<Categories>\n");
-		for (Entry<String, Double> entry : entries) {
-			System.out.println(entry.toString());
-			bw.write(entry.toString() + "\n");
-		}
-		bw.write("</Categories>\n");
-		bw.close();
 	}
 
 	/**
@@ -245,27 +238,15 @@ public class Search {
 
 		return (lst = sort(labelScore));
 	}
-
-	/**
-	 * sort sorts the items in the hash map in decreasing order
-	 * 
-	 * @param map
-	 * @return sortedEntries
-	 */
-	private List<Entry<String, Double>> sort(Map<String, Double> map) {
-		List<Entry<String, Double>> sortedEntries = new ArrayList<Entry<String, Double>>(
-				map.entrySet());
-
-		Collections.sort(sortedEntries,
-				new Comparator<Entry<String, Double>>() {
-
-					public int compare(Entry<String, Double> o1,
-							Entry<String, Double> o2) {
-						return o2.getValue().compareTo(o1.getValue());
-					}
-
-				});
-		return sortedEntries;
+	
+	public String selectRandomWords(List<String> vector, int num) {
+		int[] nums = generateRandomNums(vector, num);
+		StringBuilder str = new StringBuilder();
+		for(int i = 0; i < nums.length; i++) {
+			str.append(vector.get(nums[i]));
+			str.append(" ");
+		}
+		return str.toString();
 	}
 
 	/**
@@ -275,50 +256,41 @@ public class Search {
 	 * @return string - string with no stopwords
 	 * @throws Exception
 	 */
-	public String removeStopWords(String textFile) throws Exception {
-		int[] randomSet = generate4Random(textFile);
-		Analyzer analyzer = new StandardAnalyzer();
-		TokenStream ts = analyzer.tokenStream("content", textFile);
-		StringBuilder builder = new StringBuilder();
+	public List<String> removeStopWords(String text) throws Exception {
+		//Analyzer analyzer = new StandardAnalyzer();
+		TokenStream ts = stopAnalyzer.tokenStream("content", text);
 		CharTermAttribute charTerm = ts.addAttribute(CharTermAttribute.class);
-
+		List<String> vector = new ArrayList<String>();
+		
 		try {
 			ts.reset(); // Resets this stream to the beginning. (Required)
-			int counter = 0;
 			while (ts.incrementToken()) {
-				if (counter == randomSet[0] || counter == randomSet[1]
-						|| counter == randomSet[2] || counter == randomSet[3] ||
-						counter == randomSet[4] || counter == randomSet[5] ||
-						counter == randomSet[6]) {
-					builder.append(charTerm.toString() + " ");
-					System.out.println(charTerm.toString());
-				}
-				counter++;
+				vector.add(charTerm.toString());
 			}
 			ts.end(); // Perform end-of-stream operations, e.g. set the final
 						// offset.
 		} finally {
 			ts.close(); // Release resources associated with this stream.
 		}
-		return builder.toString();
+		return vector;
 	}
+	
 
 	/**
-	 * generate4random generate 4 unique random integers
+	 * generaterandomnums generate X unique random integers
 	 * 
 	 * @param text
 	 * @return array of 4 ints
 	 */
-	public int[] generate4Random(String text) {
-		int size = text.toCharArray().length;
+	public int[] generateRandomNums(List<String> text, int num) {
 		Random random = new Random();
-		int[] ints = new int[7];
+		int[] ints = new int[num];
 
-		for (int i = 0; i < 7; i++) {
-			ints[i] = random.nextInt(size);
+		for (int i = 0; i < num; i++) {
+			ints[i] = random.nextInt(text.size());
 			for (int j = i; j > 0; j--) {
 				if (ints[i] == ints[j]) {
-					ints[i] = random.nextInt(size);
+					ints[i] = random.nextInt(text.size());
 				}
 			}
 		}
@@ -366,13 +338,35 @@ public class Search {
 		for (org.bson.Document document : list) {
 			// only if collection contains the key 'text'
 			if (document.containsKey("text")) {
-				System.out.println("\t\t" + document.getString("text"));
+				//System.out.println("\t\t" + document.getString("text"));
 				strBuilder.append(document.getString("text"));
 				strBuilder.append(System.getProperty("line.separator"));
 			}
 		}
 
 		return strBuilder.toString();
+	}
+
+	/**
+	 * sort sorts the items in the hash map in decreasing order
+	 * 
+	 * @param map
+	 * @return sortedEntries
+	 */
+	private List<Entry<String, Double>> sort(Map<String, Double> map) {
+		List<Entry<String, Double>> sortedEntries = new ArrayList<Entry<String, Double>>(
+				map.entrySet());
+
+		Collections.sort(sortedEntries,
+				new Comparator<Entry<String, Double>>() {
+
+					public int compare(Entry<String, Double> o1,
+							Entry<String, Double> o2) {
+						return o2.getValue().compareTo(o1.getValue());
+					}
+
+				});
+		return sortedEntries;
 	}
 
 	public List<String> getUnprocessedRevs() {
@@ -382,7 +376,44 @@ public class Search {
 	public void setUnprocessedRevs(List<String> unprocessedRevs) {
 		this.unprocessedRevs = unprocessedRevs;
 	}
+	
+	public void initStopWords() throws IOException {
+		String file = "/Users/drusc0/Documents/IUB/ILS-Z 534/words.txt";
+		BufferedReader br = new BufferedReader(new FileReader(file));
+		List<String> words = new ArrayList<String>();
+		String line = "";
+		while( (line = br.readLine()) != null) {
+			words.add(line);
+		}
+		br.close();
 
+		System.out.println(words);
+		this.stopWords = StopFilter.makeStopSet(words, true);
+		this.stopAnalyzer = new StopAnalyzer(this.stopWords);
+	}
+	
+	/**
+	 * writeToFile writes entries to a file for analysis
+	 * 
+	 * @param docID
+	 * @param entries
+	 * @param path
+	 * @throws IOException
+	 */
+	public void writeToFile(String docID, List<Entry<String, Double>> entries,
+			String path) throws IOException {
+		BufferedWriter bw = new BufferedWriter(new FileWriter(path, true));
+		bw.write("<ID>" + docID + "</ID>\n");
+		bw.write("<Categories>\n");
+		for (Entry<String, Double> entry : entries) {
+			System.out.println(entry.toString());
+			bw.write(entry.toString() + "\n");
+		}
+		bw.write("</Categories>\n");
+		bw.close();
+	}
+	
+	//MAIN
 	public static void main(String[] args) throws IOException, ParseException {
 		Analyzer analyzer = new StandardAnalyzer();
 		QueryParser parser = new QueryParser("REVIEW", analyzer);
