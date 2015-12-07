@@ -33,7 +33,7 @@ public class Main {
 		 * String top10ReviewHybrid = "/top10reviewhitshybrid.txt";
 		 * search.rankDocuments("REVIEW", 10, path+top10ReviewHybrid, 5);
 		 * 
-		 * Analyze analyze = new Analyze(path + top10ReviewHits);
+		 * CategoryAnalyzer analyze = new CategoryAnalyzer(path + top10ReviewHits);
 		 * analyze.analyze(); System.out.println(
 		 * "\"Long Query\" Categories that matched (true positives): " +
 		 * analyze.getTruePositive());
@@ -78,7 +78,7 @@ public class Main {
 
 		String evaluationDoc = "/evalDoc.txt";
 		String evaluationShortDoc = "/evalShortDoc.txt";
-		Evaluation eval = new Evaluation();
+		IREvaluation eval = new IREvaluation();
 		// eval.evaluate(path+evaluationDoc);
 		// eval.evaluateShort(path+evaluationShortDoc);
 		// System.out.println(eval.getPrecision(path+evaluationDoc) + " out of "

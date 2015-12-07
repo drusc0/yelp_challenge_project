@@ -32,7 +32,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
 
-public class Evaluation {
+public class IREvaluation {
 
 	private static final String PATH = "/Volumes/SEAGATE1TB 1/Yelp/index";
 	private Connector con;
@@ -52,7 +52,7 @@ public class Evaluation {
 	 * 
 	 * @throws IOException
 	 */
-	public Evaluation() throws IOException {
+	public IREvaluation() throws IOException {
 		this.con = new Connector();
 		this.reader = DirectoryReader.open(FSDirectory.open(Paths.get(PATH)));
 		this.searcher = new IndexSearcher(this.reader);

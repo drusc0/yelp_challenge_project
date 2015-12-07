@@ -12,14 +12,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Analyze {
+public class CategoryAnalyzer {
 
 	private BufferedReader br;
 	private int truePositive;
 	private int trueNegative;
 	private Connector con;
 
-	public Analyze(String doc) {
+	public CategoryAnalyzer(String doc) {
 		this.truePositive = 0;
 		this.trueNegative = 0;
 		this.con = new Connector();
