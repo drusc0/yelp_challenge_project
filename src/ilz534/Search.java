@@ -50,7 +50,7 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class Search {
 
-	private static final String PATH = "/Volumes/SEAGATE1TB/Yelp/index";
+	private static final String PATH = "/Volumes/SEAGATE1TB 1/Yelp/index";
 	private Connector con;
 	private IndexReader reader;
 	private IndexSearcher searcher;
@@ -105,16 +105,34 @@ public class Search {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	public Set<Term> parseQuery(String queryString, String field)
+	public Set<Term> parseQuery(String queryString, String field, int numWords)
 			throws IOException, ParseException {
 
 		Set<Term> terms = new LinkedHashSet<Term>();
 		QueryParser parser = new QueryParser(field, this.analyzer);
 		Query query = parser.parse(queryString);
 		this.searcher.createNormalizedWeight(query, false).extractTerms(terms);
+		StringBuilder builder = new StringBuilder();
+		int i = 0;
+		for (Term term : terms) {
+			// if(i >= numWords) break;
+			System.out.println(term.text());
+			i++;
+		}
 		return terms;
 	}
 
+	/**
+	 * rankDocuments produces long queries (uses the testing set's review text)
+	 * and pulls the best match from the Index
+	 * 
+	 * @param field
+	 * @param numberOfHits
+	 * @param path
+	 * @param n
+	 * @throws IOException
+	 * @throws ParseException
+	 */
 	public void rankDocuments(String field, int numberOfHits, String path, int n)
 			throws IOException, ParseException {
 
@@ -157,6 +175,12 @@ public class Search {
 		}
 	}
 
+	/**
+	 * puttogether puts together a string that contains no stopwords
+	 * 
+	 * @param vector
+	 * @return string
+	 */
 	public String puttogether(List<String> vector) {
 		StringBuilder str = new StringBuilder();
 		for (int i = 0; i < vector.size(); i++) {
@@ -166,6 +190,19 @@ public class Search {
 		return str.toString();
 	}
 
+	/**
+	 * rankDocumentShortQuery is used to catch TooManyClausesException in an
+	 * attempt to improve the accuracy with a mix approach of long and short
+	 * queries
+	 * 
+	 * @param id
+	 * @param field
+	 * @param numberOfHits
+	 * @param path
+	 * @param n
+	 * @throws IOException
+	 * @throws ParseException
+	 */
 	public void rankDocumentShortQuery(String id, String field,
 			int numberOfHits, String path, int n) throws IOException,
 			ParseException {
@@ -198,6 +235,18 @@ public class Search {
 
 	}
 
+	/**
+	 * rankDocumentsShortQuery forms a query using random words, the user
+	 * selects how many words to use. The user gives the field to be examined.
+	 * This method uses selectRandomWords to complete
+	 * 
+	 * @param field
+	 * @param numberOfHits
+	 * @param path
+	 * @param n
+	 * @throws IOException
+	 * @throws ParseException
+	 */
 	public void rankDocumentsShortQuery(String field, int numberOfHits,
 			String path, int n) throws IOException, ParseException {
 
@@ -275,6 +324,14 @@ public class Search {
 		return (lst = sort(labelScore));
 	}
 
+	/**
+	 * selectRandomWords generates X random numbers and fetches the words at
+	 * those locations to form a query
+	 * 
+	 * @param vector
+	 * @param num
+	 * @return string of random words
+	 */
 	public String selectRandomWords(List<String> vector, int num) {
 		int[] nums = generateRandomNums(vector, num);
 		StringBuilder str = new StringBuilder();
@@ -404,18 +461,26 @@ public class Search {
 		return sortedEntries;
 	}
 
+	/**
+	 * getUnprocessedRevs stores the documents that the program was unable to
+	 * analyze from testing set
+	 * 
+	 * @return unprocessedReviews
+	 */
 	public List<String> getUnprocessedRevs() {
 		return unprocessedRevs;
 	}
 
-	public void setUnprocessedRevs(List<String> unprocessedRevs) {
-		this.unprocessedRevs = unprocessedRevs;
-	}
-
+	/**
+	 * initStopWords initializes the stop word analyzer with a customized list
+	 * of stop words extracted from very frequent words in the internet
+	 * 
+	 * @throws IOException
+	 */
 	public void initStopWords() throws IOException {
 		ClassLoader classLoader = getClass().getClassLoader();
 		File file = new File(classLoader.getResource("words.txt").getFile());
-		//String file = "/Users/drusc0/Documents/IUB/ILS-Z 534/words.txt";
+		// String file = "/Users/drusc0/Documents/IUB/ILS-Z 534/words.txt";
 		BufferedReader br = new BufferedReader(new FileReader(file));
 		List<String> words = new ArrayList<String>();
 		String line = "";
@@ -450,7 +515,7 @@ public class Search {
 		bw.close();
 	}
 
-	// MAIN
+	// MAIN for testing
 	public static void main(String[] args) throws IOException, ParseException {
 		Analyzer analyzer = new StandardAnalyzer();
 		QueryParser parser = new QueryParser("REVIEW", analyzer);

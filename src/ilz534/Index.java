@@ -17,7 +17,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 /**
- * Index
+ * Index.java
  * 
  * provides the initial set up to build the index
  * we will use this in combination with mongo to iterate through

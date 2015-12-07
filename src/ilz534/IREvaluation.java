@@ -32,6 +32,15 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
 
+/**
+ * 
+ * IREvaluation.java
+ * 
+ * This class help produce truth files to test precision and recall.
+ * 
+ * @author drusc0
+ *
+ */
 public class IREvaluation {
 
 	private static final String PATH = "/Volumes/SEAGATE1TB 1/Yelp/index";
@@ -47,8 +56,8 @@ public class IREvaluation {
 	private Analyzer stopAnalyzer;
 
 	/**
-	 * establishes connection with mongodb and initialized reader, searcher, and
-	 * analyzer
+	 * IREvaluation establishes connection with mongodb and initialized reader,
+	 * searcher, and analyzer
 	 * 
 	 * @throws IOException
 	 */
@@ -84,6 +93,14 @@ public class IREvaluation {
 		return testingSet;
 	}
 
+	/**
+	 * evaluate produces the truth files which will be written to disk until
+	 * precision and/or recall are requested
+	 * 
+	 * @param path
+	 * @throws IOException
+	 * @throws ParseException
+	 */
 	public void evaluate(String path) throws IOException, ParseException {
 
 		QueryParser parser = new QueryParser("REVIEW", this.analyzer);
@@ -120,6 +137,15 @@ public class IREvaluation {
 		}
 	}
 
+	/**
+	 * evaluateShort produces truth files for short queries (the sequence of
+	 * commands vary in a way we need to distinguish). The files are stored in
+	 * disk until requested precision and/or recall
+	 * 
+	 * @param path
+	 * @throws IOException
+	 * @throws ParseException
+	 */
 	public void evaluateShort(String path) throws IOException, ParseException {
 
 		QueryParser parser = new QueryParser("REVIEW", this.analyzer);
@@ -181,6 +207,14 @@ public class IREvaluation {
 		bw.close();
 	}
 
+	/**
+	 * selectRandomWords generates random number to fetch the words at those
+	 * locations from a vector of words
+	 * 
+	 * @param vector
+	 * @param num
+	 * @return
+	 */
 	public String selectRandomWords(List<String> vector, int num) {
 		int[] nums = generateRandomNums(vector, num);
 		StringBuilder str = new StringBuilder();
@@ -252,10 +286,16 @@ public class IREvaluation {
 		return reviewList;
 	}
 
+	/**
+	 * initStopWords initializes the stop word analyzer with a customized list
+	 * of stop words extracted from very frequent words in the internet
+	 * 
+	 * @throws IOException
+	 */
 	public void initStopWords() throws IOException {
 		ClassLoader classLoader = getClass().getClassLoader();
 		File file = new File(classLoader.getResource("words.txt").getFile());
-		//String file = "/Users/drusc0/Documents/IUB/ILS-Z 534/words.txt";
+		// String file = "/Users/drusc0/Documents/IUB/ILS-Z 534/words.txt";
 		BufferedReader br = new BufferedReader(new FileReader(file));
 		List<String> words = new ArrayList<String>();
 		String line = "";
@@ -291,6 +331,14 @@ public class IREvaluation {
 		return strBuilder.toString();
 	}
 
+	/**
+	 * getRecall checks for businesses from the testing set used and maps to a
+	 * list of businesses that were a match. We average the recall value
+	 * 
+	 * @param path
+	 * @return recall
+	 * @throws IOException
+	 */
 	public float getRecall(String path) throws IOException {
 		this.recall = 0;
 		String line = "";
@@ -329,12 +377,26 @@ public class IREvaluation {
 		return recall;
 	}
 
+	/**
+	 * checkRecall feeds the business id and its list of top documents to be
+	 * compared against actual category values
+	 * 
+	 * @param map
+	 */
 	public void checkRecall(Map<String, List<String>> map) {
 		for (String key : map.keySet()) {
 			getActualCategoryDocumentNumber(key, map.get(key));
 		}
 	}
 
+	/**
+	 * getActualCategoryDocumentNumber generates the actual list of categories
+	 * and the list of categories for each of its best match. A single match
+	 * produces a good find and it's marked as a good business fecthed
+	 * 
+	 * @param id
+	 * @param listOfBestMatch
+	 */
 	public void getActualCategoryDocumentNumber(String id,
 			List<String> listOfBestMatch) {
 		List<String> catsList = generateCategories(id);
@@ -363,6 +425,13 @@ public class IREvaluation {
 		this.recall = (this.recall + newRecall) / 2;
 	}
 
+	/**
+	 * getCategoriesDocs returns the number of documents that may contain at
+	 * least one of the categories fed in cats
+	 * 
+	 * @param cats
+	 * @return
+	 */
 	public long getCategoriesDocs(List<String> cats) {
 		org.bson.Document d1 = new org.bson.Document("$in", cats);
 		org.bson.Document d2 = new org.bson.Document("categories", d1);
@@ -372,10 +441,24 @@ public class IREvaluation {
 		return list.size();
 	}
 
+	/**
+	 * getTotalTest number ID fields generated in the documents with best match
+	 * 
+	 * @return
+	 */
 	public long getTotalTest() {
 		return totalTest * 10;
 	}
 
+	/**
+	 * getPrecision compares a map generated on the fly against the one produced
+	 * at the call of evaluate() to generate the precision rate that our queries
+	 * granted
+	 * 
+	 * @param path
+	 * @return
+	 * @throws IOException
+	 */
 	public long getPrecision(String path) throws IOException {
 		this.precision = 0;
 		this.totalTest = 0;
@@ -414,19 +497,34 @@ public class IREvaluation {
 		return this.precision;
 	}
 
+	/**
+	 * checkValidity feeds the testing business document and an entry from its
+	 * list of best matches to check categories that match
+	 * 
+	 * @param map
+	 */
 	public void checkValidity(Map<String, List<String>> map) {
 
 		for (String key : map.keySet()) {
+			List<String> categories = this.generateCategories(key);
 
 			for (String topDoc : map.get(key)) {
-				checkCategories(key, topDoc);
+				checkCategories(key, topDoc, categories);
 			}
 		}
 	}
 
-	public void checkCategories(String businessID, String topDoc) {
+	/**
+	 * generates categories for the business in test and for the best match. We
+	 * look for a match in both list and increase the precision.
+	 * 
+	 * @param businessID
+	 * @param topDoc
+	 * @param categories
+	 */
+	public void checkCategories(String businessID, String topDoc,
+			List<String> categories) {
 		// categories for doc in test
-		List<String> categories = this.generateCategories(businessID);
 		List<String> trainingCategories = this.generateCategories(topDoc);
 
 		for (String category : categories) {
@@ -439,6 +537,13 @@ public class IREvaluation {
 		}
 	}
 
+	/**
+	 * generateCategories produces a mongo query to retrieve the categories for
+	 * said business
+	 * 
+	 * @param docID
+	 * @return list of categories for business
+	 */
 	public List<String> generateCategories(String docID) {
 		List<String> categoriesList = this.con.getCategory(docID);
 		return categoriesList;

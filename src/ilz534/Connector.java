@@ -100,6 +100,13 @@ public class Connector {
 		return testingList;
 	}
 
+	/**
+	 * exists checks whethere a field exists for given key
+	 * 
+	 * @param field
+	 * @param key
+	 * @return
+	 */
 	public boolean exists(String field, String key) {
 		boolean flag = false;
 		Document doc = new Document("business_id", key).append(field,
@@ -110,6 +117,13 @@ public class Connector {
 		return flag;
 	}
 
+	/**
+	 * getCategory generates a query for the business collection to retrieve
+	 * categories for the business Id provided
+	 * 
+	 * @param businessID
+	 * @return categoryList
+	 */
 	public ArrayList<String> getCategory(String businessID) {
 		Document filter = new Document("business_id", businessID);
 		Document categories = this.business.find(filter).first();
