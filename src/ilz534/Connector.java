@@ -35,13 +35,17 @@ public class Connector {
 		this.business = this.db.getCollection("business");
 	}
 
+	public void close() {
+		this.client.close();
+	}
+
 	/**
 	 * getReviewCollection
 	 * 
 	 * @returns the full review collection
 	 */
 	public MongoCollection<Document> getReviewCollection() {
-		System.out.println("Retrieving Review Collection....");
+		// System.out.println("Retrieving Review Collection....");
 		return this.review;
 	}
 
@@ -51,7 +55,7 @@ public class Connector {
 	 * @returns the full business collection
 	 */
 	public MongoCollection<Document> getBusinessCollection() {
-		System.out.println("Retrieving Business Collection....");
+		// System.out.println("Retrieving Business Collection....");
 		return this.business;
 	}
 
@@ -98,8 +102,8 @@ public class Connector {
 
 	public boolean exists(String field, String key) {
 		boolean flag = false;
-		Document doc = new Document("business_id", key)
-				.append(field, new Document("$exists", true));
+		Document doc = new Document("business_id", key).append(field,
+				new Document("$exists", true));
 		if (this.business.count(doc) > 0) {
 			flag = true;
 		}
@@ -110,9 +114,10 @@ public class Connector {
 		Document filter = new Document("business_id", businessID);
 		Document categories = this.business.find(filter).first();
 
-		if(exists("categories", businessID)) {
+		if (exists("categories", businessID)) {
 			@SuppressWarnings("unchecked")
-			List<String> list = (ArrayList<String>) categories.get("categories");
+			List<String> list = (ArrayList<String>) categories
+					.get("categories");
 			return (ArrayList<String>) list;
 		}
 
@@ -126,7 +131,7 @@ public class Connector {
 	 * @returns the full tip collection
 	 */
 	public MongoCollection<Document> getTipCollection() {
-		System.out.println("Retrieving Tip Collection....");
+		// System.out.println("Retrieving Tip Collection....");
 		return this.tip;
 	}
 

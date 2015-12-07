@@ -2,11 +2,10 @@ package ilz534;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
+import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.StringReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,9 +37,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
-
-import NounAttribute.NounAnalyzer;
-import NounAttribute.PartOfSpeechAttribute;
 
 /**
  * Search.java
@@ -79,6 +75,13 @@ public class Search {
 
 		this.unprocessedRevs = new ArrayList<String>();
 		initStopWords();
+	}
+
+	public void close() throws IOException {
+		this.con.close();
+		this.reader.close();
+		this.analyzer.close();
+		this.stopAnalyzer.close();
 	}
 
 	/**
@@ -134,8 +137,7 @@ public class Search {
 
 			// parse queries
 			try {
-				Query query = parser.parse(QueryParser
-						.escape(txt));
+				Query query = parser.parse(QueryParser.escape(txt));
 				// get top 1000 result
 				TopDocs results = this.searcher.search(query, numberOfHits);
 				ScoreDoc[] hits = results.scoreDocs;
@@ -147,23 +149,57 @@ public class Search {
 				}
 			} catch (Exception e) {
 				this.unprocessedRevs.add(docID);
-				rankDocumentsShortQuery(field, numberOfHits, path, n);
+				if (n > 0) {
+					rankDocumentShortQuery(docID, field, numberOfHits, path, n);
+				}
 			}
 
 		}
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	public void rankDocumentsShortQuery(String field, int numberOfHits, String path, int n)
-			throws IOException, ParseException {
+
+	public String puttogether(List<String> vector) {
+		StringBuilder str = new StringBuilder();
+		for (int i = 0; i < vector.size(); i++) {
+			str.append(vector.get(i));
+			str.append(" ");
+		}
+		return str.toString();
+	}
+
+	public void rankDocumentShortQuery(String id, String field,
+			int numberOfHits, String path, int n) throws IOException,
+			ParseException {
+
+		QueryParser parser = new QueryParser(field, this.analyzer);
+		// extract the remaining dataset (testing)
+
+		List<org.bson.Document> list = this.getReviewList(id);
+
+		String txt = this.getText(list);
+
+		// parse queries
+		try {
+			List<String> vector = removeStopWords(txt);
+			String str = selectRandomWords(vector, n);
+			System.out.println(str);
+			Query query = parser.parse(str);
+			// get top 1000 result
+			TopDocs results = this.searcher.search(query, numberOfHits);
+			ScoreDoc[] hits = results.scoreDocs;
+			List<Entry<String, Double>> hitsProcessed = processHits(hits);
+			try {
+				writeToFile(id, hitsProcessed, path);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} catch (Exception e) {
+			this.unprocessedRevs.add(id);
+		}
+
+	}
+
+	public void rankDocumentsShortQuery(String field, int numberOfHits,
+			String path, int n) throws IOException, ParseException {
 
 		QueryParser parser = new QueryParser(field, this.analyzer);
 
@@ -180,7 +216,7 @@ public class Search {
 			} else if (field.equals("TIP")) {
 				list = this.getTipList(docID);
 			}
-			
+
 			String txt = this.getText(list);
 
 			// parse queries
@@ -238,11 +274,11 @@ public class Search {
 
 		return (lst = sort(labelScore));
 	}
-	
+
 	public String selectRandomWords(List<String> vector, int num) {
 		int[] nums = generateRandomNums(vector, num);
 		StringBuilder str = new StringBuilder();
-		for(int i = 0; i < nums.length; i++) {
+		for (int i = 0; i < nums.length; i++) {
 			str.append(vector.get(nums[i]));
 			str.append(" ");
 		}
@@ -257,11 +293,11 @@ public class Search {
 	 * @throws Exception
 	 */
 	public List<String> removeStopWords(String text) throws Exception {
-		//Analyzer analyzer = new StandardAnalyzer();
+		// Analyzer analyzer = new StandardAnalyzer();
 		TokenStream ts = stopAnalyzer.tokenStream("content", text);
 		CharTermAttribute charTerm = ts.addAttribute(CharTermAttribute.class);
 		List<String> vector = new ArrayList<String>();
-		
+
 		try {
 			ts.reset(); // Resets this stream to the beginning. (Required)
 			while (ts.incrementToken()) {
@@ -274,7 +310,6 @@ public class Search {
 		}
 		return vector;
 	}
-	
 
 	/**
 	 * generaterandomnums generate X unique random integers
@@ -338,7 +373,7 @@ public class Search {
 		for (org.bson.Document document : list) {
 			// only if collection contains the key 'text'
 			if (document.containsKey("text")) {
-				//System.out.println("\t\t" + document.getString("text"));
+				// System.out.println("\t\t" + document.getString("text"));
 				strBuilder.append(document.getString("text"));
 				strBuilder.append(System.getProperty("line.separator"));
 			}
@@ -376,13 +411,15 @@ public class Search {
 	public void setUnprocessedRevs(List<String> unprocessedRevs) {
 		this.unprocessedRevs = unprocessedRevs;
 	}
-	
+
 	public void initStopWords() throws IOException {
-		String file = "/Users/drusc0/Documents/IUB/ILS-Z 534/words.txt";
+		ClassLoader classLoader = getClass().getClassLoader();
+		File file = new File(classLoader.getResource("words.txt").getFile());
+		//String file = "/Users/drusc0/Documents/IUB/ILS-Z 534/words.txt";
 		BufferedReader br = new BufferedReader(new FileReader(file));
 		List<String> words = new ArrayList<String>();
 		String line = "";
-		while( (line = br.readLine()) != null) {
+		while ((line = br.readLine()) != null) {
 			words.add(line);
 		}
 		br.close();
@@ -391,7 +428,7 @@ public class Search {
 		this.stopWords = StopFilter.makeStopSet(words, true);
 		this.stopAnalyzer = new StopAnalyzer(this.stopWords);
 	}
-	
+
 	/**
 	 * writeToFile writes entries to a file for analysis
 	 * 
@@ -412,8 +449,8 @@ public class Search {
 		bw.write("</Categories>\n");
 		bw.close();
 	}
-	
-	//MAIN
+
+	// MAIN
 	public static void main(String[] args) throws IOException, ParseException {
 		Analyzer analyzer = new StandardAnalyzer();
 		QueryParser parser = new QueryParser("REVIEW", analyzer);
