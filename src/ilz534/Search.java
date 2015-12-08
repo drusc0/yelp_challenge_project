@@ -187,6 +187,49 @@ public class Search {
 		return map;
 	}
 
+	
+	
+	public void rankDocumentWithTFIDFTerm(String field, int numberOfHits, String path)
+			throws IOException, ParseException {
+
+		QueryParser parser = new QueryParser(field, this.analyzer);
+
+		List<org.bson.Document> testingSet = this.getTestingSet();
+		// extract the remaining dataset (testing)
+		for (org.bson.Document doc : testingSet) {
+
+			String docID = doc.getString("business_id");
+			List<org.bson.Document> list = new ArrayList<org.bson.Document>();
+
+			// get review list based on doc ids
+			if (field.equals("REVIEW")) {
+				list = this.getReviewList(docID);
+			} else if (field.equals("TIP")) {
+				list = this.getTipList(docID);
+			}
+			String txt = this.getText(list);
+
+			// parse queries
+			try {
+				//Query query = parser.parse(QueryParser.escape(txt));
+				String test1 = parseQuery(txt, "REVIEW");
+				Query query = parser.parse(test1);
+				// get top 1000 result
+				TopDocs results = this.searcher.search(query, numberOfHits);
+				ScoreDoc[] hits = results.scoreDocs;
+				List<Entry<String, Double>> hitsProcessed = processHits(hits);
+				try {
+					writeToFile(docID, hitsProcessed, path);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			} catch (Exception e) {
+
+			}
+
+		}
+	}
+	
 	/**
 	 * rankDocuments produces long queries (uses the testing set's review text)
 	 * and pulls the best match from the Index
@@ -617,7 +660,7 @@ public class Search {
 	public static void main(String[] args) throws Exception {
 		String path = System.getProperty("user.home");
 		Search s = new Search();
-		s.rankDocuments("REVIEW", 1000, path + "/test1.txt", 0);
+		s.rankDocumentWithTFIDFTerm("REVIEW", 1000, path + "/test1.txt");
 
 		/*
 		 * Analyzer analyzer = new StandardAnalyzer(); QueryParser parser = new

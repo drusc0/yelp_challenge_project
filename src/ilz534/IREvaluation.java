@@ -120,10 +120,9 @@ public class IREvaluation {
 			try {
 				Query query = parser.parse(QueryParser.escape(txt));
 				// get top 1000 result
-				TopDocs results = this.searcher.search(query, 10);
+				TopDocs results = this.searcher.search(query, 500);
 				ScoreDoc[] hits = results.scoreDocs;
-				// List<Entry<String, Double>> hitsProcessed =
-				// processHits(hits);
+
 				try {
 					writeToFile(docID, hits, path);
 				} catch (Exception e) {
@@ -165,10 +164,10 @@ public class IREvaluation {
 			try {
 				List<String> vector = removeStopWords(txt);
 				System.out.println(vector);
-				String str = selectRandomWords(vector, 5);
+				String str = selectRandomWords(vector, 7);
 				Query query = parser.parse(str);
 				// get top 1000 result
-				TopDocs results = this.searcher.search(query, 10);
+				TopDocs results = this.searcher.search(query, 500);
 				ScoreDoc[] hits = results.scoreDocs;
 				// List<Entry<String, Double>> hitsProcessed =
 				// processHits(hits);
