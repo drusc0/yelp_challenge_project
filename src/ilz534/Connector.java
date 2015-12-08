@@ -95,6 +95,7 @@ public class Connector {
 		int skip = (int) (.7 * count);
 
 		List<Document> testingList = this.business.find().skip(skip)
+				.limit(1000)
 				.into(new ArrayList<Document>());
 
 		return testingList;

@@ -75,8 +75,7 @@ public class Main {
 		 * System.out.println("Categories that DID NOT match (true negatives): "
 		 * + analyze.getTrueNegative());
 		 */
-		Search s = new Search();
-		s.parseQuery("This is a random test to see how this works.", "REVIEW", 4);
+
 		//String evaluationDoc = "/evalDoc.txt";
 		//String evaluationShortDoc = "/evalShortDoc.txt";
 		//IREvaluation eval = new IREvaluation();

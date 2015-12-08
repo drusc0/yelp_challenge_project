@@ -15,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
 
@@ -28,6 +29,9 @@ import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MultiFields;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -36,7 +40,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.DefaultSimilarity;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * Search.java
@@ -102,24 +108,83 @@ public class Search {
 	 * @param field
 	 *            - TIP|REVIEW
 	 * @return terms
-	 * @throws IOException
-	 * @throws ParseException
+	 * @throws Exception
 	 */
-	public Set<Term> parseQuery(String queryString, String field, int numWords)
-			throws IOException, ParseException {
+	public String parseQuery(String queryString, String field) throws Exception {
 
 		Set<Term> terms = new LinkedHashSet<Term>();
+		List<String> vec = removeStopWords(queryString);
+		String newquery = puttogether(vec);
+
 		QueryParser parser = new QueryParser(field, this.analyzer);
-		Query query = parser.parse(queryString);
+		Query query = parser.parse(newquery);
 		this.searcher.createNormalizedWeight(query, false).extractTerms(terms);
-		StringBuilder builder = new StringBuilder();
-		int i = 0;
-		for (Term term : terms) {
-			// if(i >= numWords) break;
-			System.out.println(term.text());
-			i++;
+
+		Map<String, Double> m = rankTerms(terms);
+		String q = selectBestTerms(m);
+
+		return q;
+	}
+
+	public String selectBestTerms(Map<String, Double> m) {
+		StringBuilder query = new StringBuilder();
+		List<Double> sc = new ArrayList<Double>();
+		
+		
+		List<Entry<String, Double>> greatest = findGreatest(m, 5);
+        System.out.println("Top "+5+" entries:");
+        for (Entry<java.lang.String, java.lang.Double> entry : greatest)
+        {
+            System.out.println(entry);
+            query.append(entry.getKey());
+            query.append(" ");
+        }
+		
+
+
+		return query.toString();
+	}
+
+	public Map<String, Double> rankTerms(Set<Term> terms) throws IOException {
+		int N = this.reader.maxDoc();
+		List<LeafReaderContext> leafContexts = this.reader.getContext()
+				.reader().leaves();
+		DefaultSimilarity dSimi = new DefaultSimilarity();
+		Map<String, Double> map = new HashMap<String, Double>();
+
+		for (Term t : terms) {
+			double termScore = 0.0;
+
+			for (int i = 0; i < leafContexts.size(); i++) {
+				LeafReaderContext leafContext = leafContexts.get(i);
+				PostingsEnum de = MultiFields.getTermDocsEnum(
+						leafContext.reader(), "REVIEW", new BytesRef(t.text()));
+				int doc;
+				if (de != null) {
+					while ((doc = de.nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
+						// de.advance(docID);
+						if (de.freq() > 0) {
+
+							int df = this.reader.docFreq(new Term("REVIEW", t
+									.text()));
+							double IDF = Math.log(1 + (N / df));
+							double normDocLength = dSimi
+									.decodeNormValue(leafContext.reader()
+											.getNormValues("REVIEW").get(doc));
+							int freq = de.freq();
+							double length = 1 / (normDocLength * normDocLength);
+							double TF = freq / (double) length;
+							double res = TF * IDF;
+							termScore += res;
+						}
+					}
+				}
+			}
+			map.put(t.text(), termScore);
+
 		}
-		return terms;
+
+		return map;
 	}
 
 	/**
@@ -155,7 +220,9 @@ public class Search {
 
 			// parse queries
 			try {
-				Query query = parser.parse(QueryParser.escape(txt));
+				//Query query = parser.parse(QueryParser.escape(txt));
+				String test1 = parseQuery(txt, "REVIEW");
+				Query query = parser.parse(test1);
 				// get top 1000 result
 				TopDocs results = this.searcher.search(query, numberOfHits);
 				ScoreDoc[] hits = results.scoreDocs;
@@ -218,7 +285,6 @@ public class Search {
 		try {
 			List<String> vector = removeStopWords(txt);
 			String str = selectRandomWords(vector, n);
-			System.out.println(str);
 			Query query = parser.parse(str);
 			// get top 1000 result
 			TopDocs results = this.searcher.search(query, numberOfHits);
@@ -272,7 +338,6 @@ public class Search {
 			try {
 				List<String> vector = removeStopWords(txt);
 				String str = selectRandomWords(vector, n);
-				System.out.println(str);
 				Query query = parser.parse(str);
 				// get top 1000 result
 				TopDocs results = this.searcher.search(query, numberOfHits);
@@ -489,7 +554,6 @@ public class Search {
 		}
 		br.close();
 
-		System.out.println(words);
 		this.stopWords = StopFilter.makeStopSet(words, true);
 		this.stopAnalyzer = new StopAnalyzer(this.stopWords);
 	}
@@ -508,31 +572,68 @@ public class Search {
 		bw.write("<ID>" + docID + "</ID>\n");
 		bw.write("<Categories>\n");
 		for (Entry<String, Double> entry : entries) {
-			System.out.println(entry.toString());
+			// System.out.println(entry.toString());
 			bw.write(entry.toString() + "\n");
 		}
 		bw.write("</Categories>\n");
 		bw.close();
 	}
 
-	// MAIN for testing
-	public static void main(String[] args) throws IOException, ParseException {
-		Analyzer analyzer = new StandardAnalyzer();
-		QueryParser parser = new QueryParser("REVIEW", analyzer);
-		IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths
-				.get(PATH)));
-		IndexSearcher searcher = new IndexSearcher(reader);
-
-		Query query = parser.parse(QueryParser
-				.escape("I am looking for a good place to relax"));
-		// get top 1000 results
-
-		TopDocs results = searcher.search(query, 10);
-		ScoreDoc[] hits = results.scoreDocs;
-		for (int i = 0; i < hits.length; i++) {
-
-			Document document = searcher.doc(hits[i].doc);
-			System.out.println(document.get("DOCNO") + ": " + hits[i].score);
+	
+	
+	
+	
+	
+	private static <String, Double extends Comparable<? super Double>> List<Entry<String, Double>> findGreatest(
+			Map<String, Double> map, int n) {
+		Comparator<? super Entry<String, Double>> comparator = new Comparator<Entry<String, Double>>() {
+			public int compare(Entry<String, Double> e0, Entry<String, Double> e1) {
+				Double v0 = e0.getValue();
+				Double v1 = e1.getValue();
+				return v0.compareTo(v1);
+			}
+		};
+		PriorityQueue<Entry<String, Double>> highest = new PriorityQueue<Entry<String, Double>>(n,
+				comparator);
+		for (Entry<String, Double> entry : map.entrySet()) {
+			highest.offer(entry);
+			while (highest.size() > n) {
+				highest.poll();
+			}
 		}
+
+		List<Entry<String, Double>> result = new ArrayList<Map.Entry<String, Double>>();
+		while (highest.size() > 0) {
+			result.add(highest.poll());
+		}
+		return result;
+	}
+
+	
+	
+	
+	
+	// MAIN for testing
+	public static void main(String[] args) throws Exception {
+		String path = System.getProperty("user.home");
+		Search s = new Search();
+		s.rankDocuments("REVIEW", 1000, path + "/test1.txt", 0);
+
+		/*
+		 * Analyzer analyzer = new StandardAnalyzer(); QueryParser parser = new
+		 * QueryParser("REVIEW", analyzer); IndexReader reader =
+		 * DirectoryReader.open(FSDirectory.open(Paths .get(PATH)));
+		 * IndexSearcher searcher = new IndexSearcher(reader);
+		 * 
+		 * Query query = parser.parse(QueryParser
+		 * .escape("I am looking for a good place to relax")); // get top 1000
+		 * results
+		 * 
+		 * TopDocs results = searcher.search(query, 10); ScoreDoc[] hits =
+		 * results.scoreDocs; for (int i = 0; i < hits.length; i++) {
+		 * 
+		 * Document document = searcher.doc(hits[i].doc);
+		 * System.out.println(document.get("DOCNO") + ": " + hits[i].score); }
+		 */
 	}
 }
