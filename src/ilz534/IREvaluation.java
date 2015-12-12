@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.core.StopAnalyzer;
@@ -43,13 +42,14 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class IREvaluation {
 
-	private static final String PATH = "/Volumes/SEAGATE1TB 1/Yelp/index";
+	private static final String PATH = "/nfs/nfs4/home/arivero/mongodb/index";
 	private Connector con;
 	private IndexReader reader;
 	private IndexSearcher searcher;
 	private Analyzer analyzer;
 	private List<String> unprocessedRevs;
 	private float recall;
+	private long cnt;
 	private long precision;
 	private long totalTest;
 	private CharArraySet stopWords;
@@ -71,6 +71,7 @@ public class IREvaluation {
 		this.recall = 0;
 		this.precision = 0;
 		this.totalTest = 0;
+		this.cnt = 0;
 		this.unprocessedRevs = new ArrayList<String>();
 		initStopWords();
 	}
@@ -118,6 +119,8 @@ public class IREvaluation {
 
 			// parse queries
 			try {
+				//List<String> vec = removeStopWords(txt);
+				//String str = puttogether(vec);
 				Query query = parser.parse(QueryParser.escape(txt));
 				// get top 1000 result
 				TopDocs results = this.searcher.search(query, 500);
@@ -130,12 +133,75 @@ public class IREvaluation {
 				}
 			} catch (Exception e) {
 				this.unprocessedRevs.add(docID);
-				// rankDocumentsShortQuery("REVIEW", 10, path, n);
+				evalDocShort(path, docID);
 			}
 
 		}
 	}
 
+	
+	
+	/**
+	 * rankDocumentShortQuery is used to catch TooManyClausesException in an
+	 * attempt to improve the accuracy with a mix approach of long and short
+	 * queries
+	 * 
+	 * @param id
+	 * @param field
+	 * @param numberOfHits
+	 * @param path
+	 * @param n
+	 * @throws IOException
+	 * @throws ParseException
+	 */
+	public void evalDocShort(String path, String docID) throws IOException,
+			ParseException {
+
+		QueryParser parser = new QueryParser("REVIEW", this.analyzer);
+		// extract the remaining dataset (testing)
+
+		List<org.bson.Document> list = this.getReviewList(docID);
+
+		String txt = this.getText(list);
+
+		// parse queries
+		try {
+			List<String> vector = removeStopWords(txt);
+			String str = selectRandomWords(vector, 5);
+			Query query = parser.parse(str);
+			// get top 1000 result
+			TopDocs results = this.searcher.search(query, 500);
+			ScoreDoc[] hits = results.scoreDocs;
+			try {
+				writeToFile(docID, hits, path);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} catch (Exception e) {
+		}
+
+	}
+	
+	
+	
+	
+	
+	
+	/**
+	 * puttogether puts together a string that contains no stopwords
+	 * 
+	 * @param vector
+	 * @return string
+	 */
+	public String puttogether(List<String> vector) {
+		StringBuilder str = new StringBuilder();
+		for (int i = 0; i < vector.size(); i++) {
+			str.append(vector.get(i));
+			str.append(" ");
+		}
+		return str.toString();
+	}
+	
 	/**
 	 * evaluateShort produces truth files for short queries (the sequence of
 	 * commands vary in a way we need to distinguish). The files are stored in
@@ -163,8 +229,7 @@ public class IREvaluation {
 			// parse queries
 			try {
 				List<String> vector = removeStopWords(txt);
-				System.out.println(vector);
-				String str = selectRandomWords(vector, 7);
+				String str = selectRandomWords(vector, 15);
 				Query query = parser.parse(str);
 				// get top 1000 result
 				TopDocs results = this.searcher.search(query, 500);
@@ -344,9 +409,8 @@ public class IREvaluation {
 		Map<String, List<String>> map = new HashMap<String, List<String>>();
 		BufferedReader br = new BufferedReader(new FileReader(path));
 		try {
-			int breaker = 0;
 			String id = "";
-			while ((line = br.readLine()) != null && breaker < 500) {
+			while ((line = br.readLine()) != null) {
 
 				if (line.contains("<ID>")) {
 					// remove tags
@@ -356,13 +420,12 @@ public class IREvaluation {
 				} else if (line.contains("<Documents>")) {
 					br.readLine();
 					List<String> lst = new ArrayList<String>();
-					for (int i = 0; i < 10; i++) {
+					for (int i = 0; i < 500 && !line.equals("</Documents>"); i++) {
 						line = br.readLine();
 						lst.add(line);
 					}
 					map.put(id, lst);
 				}
-				breaker++;
 			}
 
 			checkRecall(map);
@@ -373,7 +436,7 @@ public class IREvaluation {
 			br.close();
 		}
 
-		return recall;
+		return (this.recall/this.cnt);
 	}
 
 	/**
@@ -420,8 +483,10 @@ public class IREvaluation {
 					break;
 			}
 		}
-		float newRecall = ind / ((float) (ind + count));
-		this.recall = (this.recall + newRecall) / 2;
+		this.cnt += count;
+		this.recall += ind;
+		//float newRecall = ind / ((float) (count));
+		//this.recall = (this.recall + newRecall) / 2;
 	}
 
 	/**
@@ -446,7 +511,7 @@ public class IREvaluation {
 	 * @return
 	 */
 	public long getTotalTest() {
-		return totalTest * 10;
+		return totalTest * 500;
 	}
 
 	/**
@@ -477,7 +542,7 @@ public class IREvaluation {
 				} else if (line.contains("<Documents>")) {
 					br.readLine();
 					List<String> lst = new ArrayList<String>();
-					for (int i = 0; i < 10; i++) {
+					for (int i = 0; i < 500 && !line.equals("</Documents>"); i++) {
 						line = br.readLine();
 						lst.add(line);
 					}
@@ -485,7 +550,7 @@ public class IREvaluation {
 				}
 			}
 
-			checkRecall(map);
+			checkValidity(map);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -546,6 +611,16 @@ public class IREvaluation {
 	public List<String> generateCategories(String docID) {
 		List<String> categoriesList = this.con.getCategory(docID);
 		return categoriesList;
+	}
+	
+	//MAIN
+	public static void main(String[] args) throws IOException, ParseException {
+		String evalDoc = System.getProperty("user.home") + "/evalShortQueryW15Words.txt";
+		IREvaluation eval = new IREvaluation();
+		//eval.evaluateShort(evalDoc);
+		System.out.println(eval.getPrecision(evalDoc) + " out of "
+				+ eval.getTotalTest());
+		//System.out.println(eval.getRecall(evalDoc));
 	}
 
 }

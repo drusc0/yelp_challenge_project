@@ -56,7 +56,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public class Search {
 
-	private static final String PATH = "/Volumes/SEAGATE1TB 1/Yelp/index";
+	private static final String PATH = "/nfs/nfs4/home/arivero/mongodb/index";
 	private Connector con;
 	private IndexReader reader;
 	private IndexSearcher searcher;
@@ -128,7 +128,6 @@ public class Search {
 
 	public String selectBestTerms(Map<String, Double> m) {
 		StringBuilder query = new StringBuilder();
-		List<Double> sc = new ArrayList<Double>();
 		
 		
 		List<Entry<String, Double>> greatest = findGreatest(m, 5);

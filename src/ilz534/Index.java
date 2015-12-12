@@ -26,7 +26,7 @@ import org.apache.lucene.store.FSDirectory;
 
 public class Index {
 
-	private static final String PATH = "/Volumes/SEAGATE1TB/Yelp/index";
+	private static final String PATH = "/nfs/nfs4/home/arivero/mongodb/index";
 	final private Directory dir;
 	final private Analyzer analyzer;
 	final private IndexWriterConfig iwc;
